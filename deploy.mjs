@@ -17,13 +17,10 @@ import { TransactionStatus } from "genlayer-js/types";
 import { setup, robust, clean } from "./common.mjs";
 
 const { client, accountAddress } = await setup({ needAddress: false });
+const ROT=(client.chain?.defaultConsensusMaxRotations??3)*2;
+console.log("defaultConsensusMaxRotations:",client.chain?.defaultConsensusMaxRotations,"-> using",ROT);
 
-try {
-  await robust("consensus init", () => client.initializeConsensusSmartContract());
-  console.log("consensus init ok");
-} catch (e) {
-  console.log("consensus init skipped:", e && e.message ? e.message : String(e));
-}
+// consensus init skipped: deprecated (resolved from static chain def), raced deploy tx for same nonce
 
 const source = readFileSync(new URL("./contracts/prediction_market.py", import.meta.url), "utf8");
 const code = new TextEncoder().encode(source);
@@ -52,7 +49,7 @@ const args = [QUESTION, RULES, SOURCE1, SOURCE2, SOURCE3,
 console.log("deploying PredictionMarketResolver v2 (" + source.length + " chars) from", accountAddress);
 console.log("market:", MARKET_ID, "| staking deadline:", STAKING_DEADLINE, "| final deadline:", FINAL_DEADLINE);
 
-const txHash = await robust("deploy submit", () => client.deployContract({ code, args }));
+const txHash = await robust("deploy submit", () => client.deployContract({ code, args, consensusMaxRotations: ROT }));
 console.log("deploy tx:", txHash);
 writeFileSync("deploy-tx.txt", String(txHash) + "\n");
 

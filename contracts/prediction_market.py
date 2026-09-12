@@ -401,20 +401,25 @@ class PredictionMarketResolver(gl.Contract):
         self._settle_common(caller)
     @gl.public.write
     def void(self):
-        # PERMISSIONLESS safety valve with a PHASE GATE (steward finding,
-        # Sep 9): an unresolved market may be voided by ANY account, but
-        # only once trading has closed. While now < staking_deadline the
-        # market is still accepting stakes — voiding it then would let a
-        # griefer cancel a funded market mid-trading, so it reverts.
+        # PERMISSIONLESS safety valve: an unresolved market (no definite
+        # YES/NO outcome) may be voided by ANY account so refunds open.
+        # It can never misallocate funds: void only ever returns stakes 1:1.
         caller = str(gl.message.sender_address)
         assert self.status in ("open", "dispute_window", "dispute_resolved"), "Can only void a market that has not settled"
         assert self.outcome in ("", "UNRESOLVED"), "Cannot void a market with a definite YES/NO outcome; settle it instead"
-        assert _chain_now() >= self.staking_deadline, "Market is still open for staking; void unlocks after the staking deadline (use finalize after final_deadline)"
+        # PHASE GATE (steward Sep 9): void stays permissionless (no sender check),
+        # but must NOT fire while the market is still actively taking stakes.
+        # If status is still "open", only allow void after staking_deadline
+        # (market stuck open with no outcome). dispute_window / dispute_resolved
+        # are already past staking_deadline (resolve() gates on it), so they
+        # remain voidable when the outcome is UNRESOLVED.
+        if self.status == "open":
+            assert _chain_now() >= self.staking_deadline, "market still open for staking, cannot void before staking_deadline"
         self.winning_side = ""
         self.void_reason = "permissionless_void"
         self.status = "voided"
         self.claims = "{}"
-        self._append_history("void", caller, "permissionless void of an unresolved market after the staking deadline")
+        self._append_history("void", caller, "permissionless void of an unresolved market")
     @gl.public.write
     def finalize(self):
         # PERMISSIONLESS HARD DEADLINE EXIT (steward point 1): after

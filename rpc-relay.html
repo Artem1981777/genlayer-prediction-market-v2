@@ -8,43 +8,11 @@ const OUT = document.getElementById("out");
 const LINES = [];
 let done = 0, failed = 0;
 function log(s){ LINES.push(s); if (LINES.length > 30) LINES.shift(); OUT.textContent = LINES.join("\n"); }
-// fetch with a hard timeout so a hanging connection (e.g. a dead VPN
-// proxy) is reported instead of stalling the relay job forever
-function fetchT(url, opts, ms){
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort("timeout after " + (ms/1000) + "s"), ms);
-  return fetch(url, Object.assign({}, opts, { signal: c.signal })).finally(() => clearTimeout(t));
-}
-// boot diagnostics: can this tab reach the internet / the RPC at all?
-// results are posted to /diag and shown in the relay console
-(async () => {
-  try {
-    const r = await fetchT("https://www.cloudflare.com/cdn-cgi/trace", {}, 15000);
-    const t = (await r.text()).split("\n").filter(l => /^(ip|warp|loc|http)=/.test(l)).join(" | ");
-    log("trace: " + t);
-    try { await fetch("/diag", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ trace: t }) }); } catch(e) {}
-  } catch(e) {
-    log("trace FAILED: " + e.message);
-    try { await fetch("/diag", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ trace: "FAILED: " + e.message }) }); } catch(e) {}
-  }
-  try {
-    const r = await fetchT("https://rpc-bradbury.genlayer.com/", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] }),
-    }, 20000);
-    const t = await r.text();
-    log("rpc boot test: HTTP " + r.status + " " + t.slice(0, 80));
-    try { await fetch("/diag", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ rpc: "HTTP " + r.status + " " + t.slice(0, 120) }) }); } catch(e) {}
-  } catch(e) {
-    log("rpc boot test FAILED: " + e.message);
-    try { await fetch("/diag", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ rpc: "FAILED: " + e.message }) }); } catch(e) {}
-  }
-})();
 async function loop(){
   for(;;){
     let job = null;
     try {
-      const r = await fetch("/next?v=2", { cache: "no-store" });
+      const r = await fetch("/next", { cache: "no-store" });
       job = await r.json();
     } catch(e) { log("poll fail: " + e.message); await new Promise(r=>setTimeout(r,2000)); continue; }
     if (!job || !job.id) { await new Promise(r=>setTimeout(r,400)); continue; }
@@ -52,9 +20,9 @@ async function loop(){
     let payload = { id: job.id, ok: false, status: 0, text: "" };
     for (let a = 1; a <= 6; a++) {
       try {
-        const r = await fetchT("https://rpc-bradbury.genlayer.com/", {
+        const r = await fetch("https://rpc-bradbury.genlayer.com/", {
           method: "POST", headers: { "Content-Type": "application/json" }, body: job.body,
-        }, 60000);
+        });
         const t = await r.text();
         payload = { id: job.id, ok: true, status: r.status, text: t };
         break;

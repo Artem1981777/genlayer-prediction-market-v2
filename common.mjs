@@ -15,7 +15,7 @@ export function isTransient(e) {
   let m = "";
   try { m = (e && (e.shortMessage || e.message || "")) + " " + (e && e.details || "") + " " + ((e && e.cause && e.cause.code) || "") + " " + ((e && e.cause && e.cause.message) || ""); }
   catch (x) { m = String(e); }
-  return ["fetch failed", "ECONNABORTED", "ECONNRESET", "capacity", "-32005", "timeout", "Timed out", "socket", "terminated", "relay:", "HTTP request failed", "consensus contract", "EVM tx", "-32001", "contract not found", "ResourceNotFound", "resource not found"].some(s => m.indexOf(s) >= 0);
+  return ["fetch failed", "ECONNABORTED", "ECONNRESET", "capacity", "-32005", "timeout", "socket", "terminated", "relay:", "HTTP request failed", "consensus contract", "EVM tx", "-32001", "contract not found", "ResourceNotFound", "resource not found"].some(s => m.indexOf(s) >= 0);
 }
 
 export async function robust(label, fn, tries) {
@@ -32,29 +32,6 @@ export async function robust(label, fn, tries) {
 export function makeClient(privateKey) {
   const account = createAccount(privateKey);
   const client = createClient({ chain: testnetBradbury, account });
-  // Harden gas estimation: genlayer-js falls back to a fixed 200_000 gas
-  // when estimation fails, but a deploy with ~27KB of calldata needs
-  // ~450k gas for the calldata alone — such a tx can never be mined and
-  // becomes a zombie that blocks the account nonce. Never let that
-  // fallback through: on estimation failure (or a suspiciously low
-  // estimate) use a 2M floor instead.
-  const origEstimate = client.estimateTransactionGas?.bind(client);
-  if (origEstimate) {
-    client.estimateTransactionGas = async (args) => {
-      try {
-        const est = await origEstimate(args);
-        const n = typeof est === "bigint" ? est : BigInt(est);
-        if (n < 2_000_000n) {
-          console.log("[gas] estimate " + n + " below floor — using 2M");
-          return 2_000_000n;
-        }
-        return est;
-      } catch (e) {
-        console.log("[gas] estimate failed (" + String((e && e.message) || e).slice(0, 100) + ") — using 2M floor (NOT the 200k zombie fallback)");
-        return 2_000_000n;
-      }
-    };
-  }
   return { account, client };
 }
 

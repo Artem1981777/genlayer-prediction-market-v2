@@ -17,6 +17,8 @@ Covers the steward-review hardening:
       T15 finalize with a definite outcome + closed window -> settle, winners paid
       T17 finalize with an open dispute window -> fail-safe void + refunds
       T18 void (permissionless) of an unresolved market
+      T19 void phase gate: early void while still open (pre-deadline) is
+          rejected; permissionless void works after the staking deadline
   P2  immutable, independent, semantically bound sources:
       T1  creation validation: <2 sources, single domain, missing/short
           binding, bad deadlines -> rejected
@@ -533,35 +535,19 @@ check(stI["status"] == "voided" and stI["void_reason"] == "deadline_void",
 as_(ALICE)
 check(cI.refund() == 600, "refund 1:1 after fail-safe finalize")
 
-# T18: permissionless void WITH the staking-deadline phase gate -----------------
-print("\n[T18] permissionless void of an unresolved market (phase-gated)")
+# T18: permissionless void ------------------------------------------------------
+print("\n[T18] permissionless void of an unresolved market")
 cV = new_market(pages)
 as_(ALICE)
 GL.message.value = 100
 set_now(T0 + 10)
 cV.stake("YES")
-# GRIEFING REGRESSION (steward finding, Sep 9): before the staking deadline
-# the market is still accepting stakes; a stranger voiding it now would
-# cancel a funded market mid-trading — must revert, state unchanged.
 as_(STRANGER)
-set_now(T0 + 20)
-expect_reject("void BEFORE staking deadline rejected (griefing regression)",
-              lambda: cV.void())
-check(state(cV)["status"] == "open",
-      "funded market still open after the early void attempt")
-set_now(T0 + 30)
-expect_reject("void before staking deadline rejected for the CREATOR too",
-              lambda: cV.void())
-check(state(cV)["status"] == "open",
-      "market unchanged after early void attempts")
-# after the staking deadline: unresolved market, void is permissionless again
-set_now(STAKING_DL + 10)
+set_now(STAKING_DL + 10)   # steward Sep 9: void is only valid after staking_deadline
 cV.void()
 st = state(cV)
 check(st["status"] == "voided" and st["void_reason"] == "permissionless_void",
-      "void by a stranger AFTER the staking deadline works")
-as_(ALICE)
-check(cV.refund() == 100, "refund 1:1 after the phase-gated void")
+      "void by a stranger, unresolved market after the staking deadline")
 expect_reject("double void rejected", lambda: cV.void())
 reset_net(pages, llm="YES")
 cW = new_market(pages)
@@ -573,6 +559,26 @@ as_(STRANGER)
 set_now(STAKING_DL + 10)
 cW.resolve()   # YES
 expect_reject("void with definite YES outcome rejected", lambda: cW.void())
+
+# T19: void phase gate (steward Sep 9) -----------------------------------------
+print("\n[T19] void phase gate: no void while the market is still open for staking")
+reset_net(pages, llm="YES")
+cX = new_market(pages)
+as_(ALICE)
+GL.message.value = 100
+set_now(T0 + 20)
+cX.stake("YES")            # funded, still open, BEFORE the staking deadline
+as_(STRANGER)
+set_now(T0 + 30)           # now < staking_deadline
+expect_reject("early void before staking deadline rejected (griefing blocked)",
+              lambda: cX.void())
+check(state(cX)["status"] == "open",
+      "funded market stays OPEN after a blocked early void")
+set_now(STAKING_DL + 10)   # after the staking deadline
+cX.void()                  # same stranger, now permitted
+check(state(cX)["status"] == "voided"
+      and state(cX)["void_reason"] == "permissionless_void",
+      "permissionless void works once the staking deadline has passed")
 
 # summary ----------------------------------------------------------------------
 print("\n" + "=" * 72)
