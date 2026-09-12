@@ -2,6 +2,9 @@
 
 A GenLayer Intelligent Contract that runs a full prediction-market lifecycle -- staking, permissionless resolution from cited immutable web sources, a mandatory dispute window, settlement, and a hard-deadline exit -- with a **phase-gated `void()`** that cannot cancel a market while it is still open for staking.
 
+This repository is a **standalone resubmission** that directly and fully addresses the steward's review of the `void()` lifecycle (see the section below and `docs/REVIEW-RESPONSE.md`).
+
+- **Live site:** https://artem1981777.github.io/genlayer-prediction-market-v2/
 - **Chain:** GenLayer Testnet Bradbury (Chain ID 4221)
 - **Contract:** `contracts/prediction_market.py`
 - **Primary proof:** offline consensus simulation `sim_market.py` -- **57/57** checks pass (includes the `void()` phase-gate test, T19)
@@ -16,9 +19,15 @@ A GenLayer Intelligent Contract that runs a full prediction-market lifecycle -- 
 
 Post-deadline voids (an unresolved market after `staking_deadline`) and dispute-phase voids are unchanged. A market that reached a definite YES/NO can never be voided.
 
+**How this fully satisfies the concern:**
+- A funded, still-open market can no longer be cancelled before its staking deadline -- the exact griefing path in the review is now blocked.
+- The lifecycle stays fully permissionless: no owner or admin privilege was added.
+- Verifiable two ways: read `void()` in `contracts/prediction_market.py`, and run `sim_market.py` (test T19).
+
 - Source: `contracts/prediction_market.py` -- see `void()` and the guard string above.
 - Test: `sim_market.py` T19 -- a pre-deadline `void()` reverts; a post-deadline `void()` on an unresolved market opens 1:1 refunds.
 - Reproduce: `python3 sim_market.py` -> `57/57`.
+- Full write-up: `docs/REVIEW-RESPONSE.md` and `docs/EVIDENCE.md`.
 
 ## Contract lifecycle
 
@@ -47,6 +56,8 @@ Every consensus-critical decision is computed and stored on-chain by the contrac
 
 The **gated** contract in this repo is **not yet deployed** on Bradbury: the testnet is currently not activating deploy transactions (submitted deploys time out without activation). The reproducible simulation above is the primary, self-contained proof of the fix. Any earlier deployment predates this fix and is intentionally not linked here, so nobody is pointed at pre-fix behavior; the gated version will be redeployed once testnet deploy activation recovers.
 
+The live site above is a **static** overview (no on-chain calls), so it always reflects the fixed contract and never routes anyone to pre-fix behavior.
+
 Deploy tooling is included for when the testnet recovers:
 
     npm install
@@ -54,6 +65,7 @@ Deploy tooling is included for when the testnet recovers:
 
 ## Repo layout
 
+    index.html                       # static live-site overview (GitHub Pages)
     contracts/prediction_market.py   # the Intelligent Contract (phase-gated void)
     sim_market.py                    # offline consensus simulation (57/57)
     deploy.mjs / common.mjs          # deploy tooling (Bradbury)
