@@ -1,0 +1,6 @@
+# Byte-for-byte parity matters: the deployed contract code must stay
+# identical to the local source. Force LF on checkout everywhere so a
+# fresh clone still matches the deployed bytes (verify.mjs).
+* text=auto eol=lf
+*.png binary
+*.ico binary

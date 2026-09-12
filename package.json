@@ -1,0 +1,16 @@
+{
+  "name": "genlayer-prediction-market",
+  "version": "0.2.0",
+  "description": "AI-resolved prediction market Intelligent Contract on GenLayer: reads live web sources, an LLM judges the outcome, validators reach consensus on YES/NO/UNRESOLVED.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "deploy": "node --env-file=.env deploy.mjs",
+    "interact": "node --env-file=.env interact.mjs",
+    "test": "node --env-file=.env test.mjs"
+  },
+  "dependencies": {
+    "genlayer-js": "^1.1.8",
+    "viem": "^2.55.18"
+  }
+}
