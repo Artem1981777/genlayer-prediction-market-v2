@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GenLayer Prediction Market Resolver</title>
+<style>
+:root{--bg:#0b0d12;--card:#151922;--fg:#e7ecf3;--muted:#9aa4b2;--acc:#5b9dff;--ok:#38d39f;--line:#232a36}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:40px 20px}
+h1{font-size:30px;margin:0 0 6px}
+.tag{color:var(--muted);margin:0 0 20px}
+.links a{display:inline-block;margin:0 10px 10px 0;padding:8px 14px;background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--acc);text-decoration:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:18px 0}
+h2{font-size:20px;margin:0 0 10px}
+code{background:#0f131b;border:1px solid var(--line);border-radius:6px;padding:2px 6px;color:#dbe4f0}
+pre{background:#0f131b;border:1px solid var(--line);border-radius:8px;padding:14px;overflow:auto}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.ok{color:var(--ok);font-weight:600}
+.muted{color:var(--muted)}
+footer{color:var(--muted);margin-top:26px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>GenLayer Prediction Market Resolver</h1>
+<p class="tag">An Intelligent Contract prediction market on GenLayer Testnet Bradbury: permissionless staking, resolution from cited immutable web sources, a dispute window, settlement, and a phase-gated void().</p>
+<div class="links">
+<a href="https://github.com/Artem1981777/genlayer-prediction-market-v2">GitHub repo</a>
+<a href="https://github.com/Artem1981777/genlayer-prediction-market-v2/blob/main/contracts/prediction_market.py">Contract source</a>
+<a href="https://github.com/Artem1981777/genlayer-prediction-market-v2/blob/main/sim_market.py">Simulation</a>
+<a href="https://github.com/Artem1981777/genlayer-prediction-market-v2/blob/main/docs/REVIEW-RESPONSE.md">Review response</a>
+</div>
+<div class="card">
+<h2>The fix: phase-gated void()</h2>
+<p>Steward concern: any account could call <code>void()</code> while a funded market was still open and cancel it before resolution.</p>
+<p>Now <code>void()</code> stays permissionless but gates on phase. While the market is open for staking it reverts:</p>
+<pre>market still open for staking, cannot void before staking_deadline</pre>
+<p class="muted">Post-deadline voids and dispute-phase voids are unchanged; a decided YES/NO market can never be voided.</p>
+</div>
+<div class="card">
+<h2>Contract lifecycle</h2>
+<table>
+<tr><th>Method</th><th>Access</th><th>Notes</th></tr>
+<tr><td>stake(side)</td><td>payable, anyone</td><td>records value on a side while now &lt; staking_deadline</td></tr>
+<tr><td>resolve()</td><td>anyone</td><td>after deadline; comparative consensus over binding-verified sources; opens dispute window</td></tr>
+<tr><td>dispute() / resolve_dispute()</td><td>anyone</td><td>bounded two-round dispute window</td></tr>
+<tr><td>settle()</td><td>anyone</td><td>pari-mutuel payout; auto-voids if the winning side is empty</td></tr>
+<tr><td>finalize()</td><td>anyone</td><td>after final_deadline: settle-or-void hard exit (1:1 refunds)</td></tr>
+<tr><td>void()</td><td>anyone</td><td>permissionless, phase-gated (never while open, never on a decided market)</td></tr>
+<tr><td>refund()</td><td>stakers</td><td>single-use 1:1 refund on a voided market</td></tr>
+</table>
+</div>
+<div class="card">
+<h2>Verify (no keys, no network)</h2>
+<pre>git clone https://github.com/Artem1981777/genlayer-prediction-market-v2
+cd genlayer-prediction-market-v2
+python3 sim_market.py</pre>
+<p>Expected: <span class="ok">57/57 checks pass</span>. Test T19 asserts the pre-deadline void revert and the post-deadline refund path.</p>
+</div>
+<div class="card">
+<h2>On-chain status</h2>
+<p class="muted">The gated contract is not yet deployed on Bradbury: the testnet is currently not activating deploy transactions (submitted deploys time out without activation). The reproducible simulation above is the primary, self-contained proof. The gated version will be deployed once testnet deploy activation recovers. No pre-fix contract is linked here.</p>
+</div>
+<footer>MIT licensed. Built on GenLayer Testnet Bradbury (Chain ID 4221).</footer>
+</div>
+</body>
+</html>
