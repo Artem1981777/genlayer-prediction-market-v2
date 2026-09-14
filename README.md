@@ -1,4 +1,4 @@
-> **Superseded by v3:** Active development and the Sep 14 steward-review fixes moved to [https://github.com/Artem1981777/genlayer-prediction-market-v3](https://github.com/Artem1981777/genlayer-prediction-market-v3). This v2 repository remains available for review history.
+> **Superseded by v3:** Active development and the Sep 14 steward-review fixes moved to [genlayer-prediction-market-v3](https://github.com/Artem1981777/genlayer-prediction-market-v3). This v2 repository remains available for review history.
 
 # GenLayer Prediction Market Resolver
 
