@@ -1,3 +1,5 @@
+> **Superseded by v3:** Active development and the Sep 14 steward-review fixes moved to [https://github.com/Artem1981777/genlayer-prediction-market-v3](https://github.com/Artem1981777/genlayer-prediction-market-v3). This v2 repository remains available for review history.
+
 # GenLayer Prediction Market Resolver
 
 A GenLayer Intelligent Contract that runs a full prediction-market lifecycle -- staking, permissionless resolution from cited immutable web sources, a mandatory dispute window, settlement, and a hard-deadline exit -- with a **phase-gated `void()`** that cannot cancel a market while it is still open for staking.
